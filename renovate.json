@@ -1,0 +1,30 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "platformAutomerge": true,
+  "packageRules": [
+    {
+      "description": "weewx bumps change what the image ships, so they get a manual look.",
+      "matchPackageNames": ["weewx"],
+      "commitMessagePrefix": "feat:",
+      "automerge": false,
+      "addLabels": ["needs-review"]
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "commitMessagePrefix": "chore:"
+    },
+    {
+      "description": "Auto-merge patch, digest and pin updates of everything else once CI passes.",
+      "matchUpdateTypes": ["patch", "digest", "pin", "pinDigest"],
+      "matchPackageNames": ["!weewx"],
+      "automerge": true
+    },
+    {
+      "description": "Minor and major bumps are reviewed manually, including actions that only the publish job runs.",
+      "matchUpdateTypes": ["minor", "major"],
+      "automerge": false,
+      "addLabels": ["needs-review"]
+    }
+  ]
+}
