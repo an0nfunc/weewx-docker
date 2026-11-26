@@ -128,9 +128,9 @@ directory, set the user instead:
     user: "967:967"
 ```
 
-A uid without an entry in the image's `/etc/passwd` has two limits: ssh, and
-with it the Rsync report, refuses to run, and `weectl station upgrade` must skip
-the `util` files (`--what config examples skins`).
+A uid without an entry in the image's `/etc/passwd` has two limits. ssh refuses
+to run, and with it the Rsync report. `weectl station upgrade` must skip the
+`util` files (`--what config examples skins`).
 
 ## Moving an existing station in
 
