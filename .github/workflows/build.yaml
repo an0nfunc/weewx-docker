@@ -75,7 +75,7 @@ jobs:
           labels: |
             org.opencontainers.image.title=weewx
             org.opencontainers.image.description=WeeWX weather station software on Alpine, with rtl_433
-            org.opencontainers.image.licenses=GPL-3.0-only
+            org.opencontainers.image.licenses=GPL-3.0-only AND GPL-2.0-or-later
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0

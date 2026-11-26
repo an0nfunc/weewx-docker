@@ -11,8 +11,10 @@
       "addLabels": ["needs-review"]
     },
     {
+      "description": "Actions run with packages: write, so a new release waits a week before it is proposed.",
       "matchManagers": ["github-actions"],
-      "commitMessagePrefix": "chore:"
+      "commitMessagePrefix": "chore:",
+      "minimumReleaseAge": "7 days"
     },
     {
       "description": "Auto-merge patch, digest and pin updates of everything else once CI passes.",
