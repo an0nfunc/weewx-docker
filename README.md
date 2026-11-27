@@ -189,6 +189,22 @@ docker compose exec weewx weectl station upgrade --what config skins
 | `5.6.0`, `5.6`, `5`, `latest` | weewx version; rebuilt weekly with Alpine updates |
 | `sha-<commit>` | the build from one commit of this repository |
 
+## Verifying the image
+
+Published images carry a signed build provenance attestation that ties their
+digest to the commit and workflow run that built them (older `sha-<commit>`
+tags predate it). Check it with the GitHub CLI:
+
+```sh
+gh attestation verify oci://ghcr.io/an0nfunc/weewx:5.6.0 \
+  --repo an0nfunc/weewx-docker \
+  --cert-identity https://github.com/an0nfunc/weewx-docker/.github/workflows/build.yaml@refs/heads/main
+```
+
+The `--cert-identity` check accepts only builds of `main`. Tags move with each
+rebuild, so to run exactly the image you checked, verify it by digest and pin
+that digest in compose (`ghcr.io/an0nfunc/weewx:5.6.0@sha256:...`).
+
 ## License
 
 The files in this repository are MIT licensed. The image contains weewx
