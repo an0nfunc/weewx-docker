@@ -1,12 +1,21 @@
+FROM alpine:3.24@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf AS wheels
+
+# CT3 is built here because PyPI has no musl wheels for it, and Alpine's
+# py3-cheetah 3.3.3 predates the fix that stops its C extension printing
+# ignored TypeErrors on every template lookup under Python 3.13+.
+RUN apk add --no-cache build-base python3-dev py3-setuptools
+RUN --mount=type=bind,source=requirements.txt,target=/tmp/requirements.txt \
+    python3 -m venv --system-site-packages /build \
+    && /build/bin/pip wheel --no-cache-dir --no-deps --no-build-isolation --require-hashes \
+        -r /tmp/requirements.txt -w /wheels
+
 FROM alpine:3.24@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf
 
-# Alpine packages every module weewx imports, so the image needs no compiler and
-# weewx itself installs without dependencies. apk upgrade pulls in fixes for
-# packages the base image already ships.
+# Alpine packages the remaining modules weewx imports, so this stage needs no
+# compiler. apk upgrade pulls in fixes for packages the base image already ships.
 RUN apk upgrade --no-cache \
     && apk add --no-cache \
         openssh-client \
-        py3-cheetah \
         py3-configobj \
         py3-ephem \
         py3-paho-mqtt \
@@ -28,10 +37,9 @@ RUN apk upgrade --no-cache \
 # shadow the image's own. Root processes leave it off the path, so nothing the
 # container user writes there runs as root. The empty sitecustomize keeps one
 # planted under /data from running in every Python process.
-RUN --mount=type=bind,source=requirements.txt,target=/tmp/requirements.txt \
+RUN --mount=type=bind,from=wheels,source=/wheels,target=/tmp/wheels \
     python3 -m venv --system-site-packages /opt/weewx \
-    && /opt/weewx/bin/pip install --no-cache-dir --no-deps --require-hashes \
-        -r /tmp/requirements.txt \
+    && /opt/weewx/bin/pip install --no-cache-dir --no-index --no-deps /tmp/wheels/*.whl \
     && /opt/weewx/bin/pip check \
     && purelib=$(python3 -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])') \
     && echo "import os, sys; os.geteuid() and sys.path.append('/data/lib/python')" > "$purelib/zz-weewx-data.pth" \

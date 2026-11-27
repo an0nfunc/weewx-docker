@@ -42,6 +42,11 @@ import weewx
 print(weewx.__version__)')
 [ "$version" = "$expected" ] || fail "weewx is $version, requirements.txt pins $expected"
 docker run --rm "$image" rtl_433 -V 2>&1 | grep -q 'rtl_433 version' || fail "rtl_433 does not run"
+out=$(docker run --rm "$image" python3 -c '
+from Cheetah import _namemapper
+from Cheetah.Template import Template
+print(Template("$s.upper()", searchList=[{"s": "abc"}]))' 2>&1)
+[ "$out" = ABC ] || fail "Cheetah lookup: $out"
 [ "$(docker run --rm "$image" stat -c %U /opt/weewx/station/weewx.conf)" = root ] ||
     fail "the station template is writable by the container user"
 
