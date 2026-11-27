@@ -25,15 +25,17 @@ RUN apk upgrade --no-cache \
     && ln -s /data /home/weewx/weewx-data
 
 # /data/lib/python comes last on the path, so packages installed there cannot
-# shadow the image's own. The empty sitecustomize keeps one planted under /data
-# from running in every Python process, root ones included.
+# shadow the image's own. Root processes leave it off the path, so nothing the
+# container user writes there runs as root. The empty sitecustomize keeps one
+# planted under /data from running in every Python process.
 RUN --mount=type=bind,source=requirements.txt,target=/tmp/requirements.txt \
     python3 -m venv --system-site-packages /opt/weewx \
     && /opt/weewx/bin/pip install --no-cache-dir --no-deps --require-hashes \
         -r /tmp/requirements.txt \
     && /opt/weewx/bin/pip check \
-    && echo /data/lib/python > "$(python3 -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/zz-weewx-data.pth" \
-    && touch "$(/opt/weewx/bin/python3 -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/sitecustomize.py"
+    && purelib=$(python3 -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])') \
+    && echo "import os, sys; os.geteuid() and sys.path.append('/data/lib/python')" > "$purelib/zz-weewx-data.pth" \
+    && touch "$purelib/sitecustomize.py"
 
 # The default station is created here rather than on first start because
 # weectl looks up the user and group names, which a --user uid may not have.

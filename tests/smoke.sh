@@ -54,10 +54,20 @@ echo 'raise SystemExit("shadowed")' > /data/lib/python/configobj/__init__.py
 echo 'print("PLANTED")' > /data/lib/python/sitecustomize.py
 echo 'import sys; print("PLANTED")' > "$usersite/planted.pth"
 echo 'print("PLANTED")' > /data/configobj.py
-cd /data && python3 -c 'import configobj, smoke_marker; print("ok")'
+cd /data
+for py in python3 /usr/bin/python3; do
+    "$py" -c 'import configobj, smoke_marker; print("ok")'
+done
 EOF
 )
-[ "$out" = ok ] || fail "python path: $out"
+[ "$out" = "ok
+ok" ] || fail "python path: $out"
+out=$(docker run --rm --user 0 -w /data -v "$prefix-py:/data" "$image" sh -c '
+for py in python3 /usr/bin/python3; do
+    "$py" -c "import sys, configobj; assert \"/data/lib/python\" not in sys.path; print(\"ok\")"
+done' 2>&1)
+[ "$out" = "ok
+ok" ] || fail "python path as root: $out"
 
 echo "* first start creates a station"
 docker run -d --name "$prefix" -v "$prefix:/data" "$image" >/dev/null
