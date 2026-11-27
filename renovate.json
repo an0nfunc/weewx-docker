@@ -15,16 +15,19 @@
   ],
   "packageRules": [
     {
-      "description": "weewx bumps change what the image ships, so they get a manual look.",
-      "matchPackageNames": ["weewx"],
-      "commitMessagePrefix": "feat:",
+      "description": "weewx and CT3 run inside weewxd, and CT3 is compiled for every platform only at publish time, so their bumps get a manual look.",
+      "matchPackageNames": ["weewx", "/^ct3$/i"],
       "automerge": false,
       "addLabels": ["needs-review"]
     },
     {
+      "matchPackageNames": ["weewx"],
+      "commitMessagePrefix": "feat:"
+    },
+    {
       "description": "Auto-merge patch, digest and pin updates of everything else once CI passes.",
       "matchUpdateTypes": ["patch", "digest", "pin", "pinDigest"],
-      "matchPackageNames": ["!weewx"],
+      "matchPackageNames": ["!weewx", "!/^ct3$/i"],
       "automerge": true
     },
     {
