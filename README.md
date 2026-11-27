@@ -65,29 +65,47 @@ docker compose restart weewx
 ```
 
 If an extension needs a Python package the image does not ship, install it into
-`/data/lib/python`, which is on the Python path. This works for packages that
-need no compiler.
+`/data/lib/python`. That directory comes after the image's own packages on the
+Python path, so it can add packages but not replace shipped ones. This works for
+packages that need no compiler.
 
 ```sh
-docker compose exec weewx pip install --target /data/lib/python some-package
+docker compose exec weewx pip install --no-deps --target /data/lib/python some-package
 ```
+
+Run `weectl` and `pip` as the container user, never with `-u 0`.
 
 ## Hardware
 
-Pass the device into the container, and add the host group that owns it so the
-container user may open it.
+Pass the device into the container, and add a host group that owns only that
+device so the container user may open it.
 
-An RTL-SDR stick for rtl_433:
+An RTL-SDR stick for rtl_433: USB device numbers change when the stick is
+replugged, so the whole USB tree is passed in. That makes the group the only
+thing between the container and every other USB device on the host, so give
+the stick a group of its own with a udev rule on the host (IDs from `lsusb`):
+
+```
+# /etc/udev/rules.d/60-rtl-sdr.rules
+SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="0bda", ATTR{idProduct}=="2838", GROUP="rtlsdr", MODE="0660"
+```
+
+```sh
+sudo groupadd -r rtlsdr
+sudo udevadm control --reload && sudo udevadm trigger
+getent group rtlsdr   # the gid for group_add
+```
 
 ```yaml
     devices:
       - /dev/bus/usb:/dev/bus/usb
     group_add:
-      - "970"   # stat -c %g /dev/bus/usb/<bus>/<device>
+      - "970"   # gid of rtlsdr
 ```
 
-The host's DVB-T kernel driver (`dvb_usb_rtl28xxu`) must not claim the stick,
-so blacklist it on the host.
+Never add group 0, and never run the container as root while the USB tree is
+passed in: root may open every USB device. The host's DVB-T kernel driver
+(`dvb_usb_rtl28xxu`) must not claim the stick, so blacklist it on the host.
 
 A serial or USB-serial station:
 
@@ -119,6 +137,13 @@ prints every packet. Remove it from an older config too if the log gets noisy.
 weewx writes the reports to `/data/public_html` but does not serve them. Point
 a web server at that directory, or upload them with the FTP or Rsync report.
 
+The Rsync report's ssh key and `known_hosts` must live in `/data` to survive a
+new container. Point the report at them in `weewx.conf`:
+
+```ini
+        ssh_options = -i /data/.ssh/id_ed25519 -o UserKnownHostsFile=/data/.ssh/known_hosts
+```
+
 ## Running as another user
 
 The container runs as uid and gid 1000. To match the owner of an existing data
@@ -136,7 +161,8 @@ to run, and with it the Rsync report. `weectl station upgrade` must skip the
 
 1. Stop the old weewx.
 2. Copy into the data directory: `weewx.conf`, the extensions (`bin/user`), the
-   skins and the SQLite database (into `archive/`).
+   skins and the SQLite database (into `archive/`). Everything must be owned by
+   the container user, and `weewx.conf` should be mode 600.
 3. In `weewx.conf`, remove `WEEWX_ROOT` (it then defaults to the directory of
    the config file) and make `SKIN_ROOT`, `HTML_ROOT` and `SQLITE_ROOT` relative:
    `skins`, `public_html`, `archive`.

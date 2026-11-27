@@ -2,6 +2,17 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
   "platformAutomerge": true,
+  "customManagers": [
+    {
+      "description": "Images the workflow runs while building: binfmt, BuildKit, the SBOM scanner.",
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/workflows/[^/]+\\.ya?ml$/"],
+      "matchStrings": [
+        "(?:image[:=] ?|generator=)(?<depName>[a-z0-9./_-]+):(?<currentValue>[A-Za-z0-9._-]+)@(?<currentDigest>sha256:[a-f0-9]{64})"
+      ],
+      "datasourceTemplate": "docker"
+    }
+  ],
   "packageRules": [
     {
       "description": "weewx bumps change what the image ships, so they get a manual look.",
@@ -11,22 +22,32 @@
       "addLabels": ["needs-review"]
     },
     {
-      "description": "Actions run with packages: write, so a new release waits a week before it is proposed.",
-      "matchManagers": ["github-actions"],
-      "commitMessagePrefix": "chore:",
-      "minimumReleaseAge": "7 days"
-    },
-    {
       "description": "Auto-merge patch, digest and pin updates of everything else once CI passes.",
       "matchUpdateTypes": ["patch", "digest", "pin", "pinDigest"],
       "matchPackageNames": ["!weewx"],
       "automerge": true
     },
     {
-      "description": "Minor and major bumps are reviewed manually, including actions that only the publish job runs.",
+      "description": "Minor and major bumps are reviewed manually.",
       "matchUpdateTypes": ["minor", "major"],
       "automerge": false,
       "addLabels": ["needs-review"]
+    },
+    {
+      "description": "Actions and build images run in the publish job, which CI on a pull request does not exercise, so they are never merged unseen.",
+      "matchManagers": ["github-actions", "custom.regex"],
+      "commitMessagePrefix": "chore:",
+      "minimumReleaseAge": "7 days",
+      "automerge": false,
+      "addLabels": ["needs-review"]
+    },
+    {
+      "matchPackageNames": ["docker.io/tonistiigi/binfmt"],
+      "versioning": "regex:^qemu-v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)$"
+    },
+    {
+      "matchPackageNames": ["moby/buildkit"],
+      "versioning": "regex:^v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)$"
     }
   ]
 }

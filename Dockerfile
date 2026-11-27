@@ -1,9 +1,10 @@
-# syntax=docker/dockerfile:1
 FROM alpine:3.24@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf
 
 # Alpine packages every module weewx imports, so the image needs no compiler and
-# weewx itself installs without dependencies.
-RUN apk add --no-cache \
+# weewx itself installs without dependencies. apk upgrade pulls in fixes for
+# packages the base image already ships.
+RUN apk upgrade --no-cache \
+    && apk add --no-cache \
         openssh-client \
         py3-cheetah \
         py3-configobj \
@@ -23,28 +24,35 @@ RUN apk add --no-cache \
     && install -d -o weewx -g weewx /data \
     && ln -s /data /home/weewx/weewx-data
 
+# /data/lib/python comes last on the path, so packages installed there cannot
+# shadow the image's own. The empty sitecustomize keeps one planted under /data
+# from running in every Python process, root ones included.
 RUN --mount=type=bind,source=requirements.txt,target=/tmp/requirements.txt \
     python3 -m venv --system-site-packages /opt/weewx \
     && /opt/weewx/bin/pip install --no-cache-dir --no-deps --require-hashes \
         -r /tmp/requirements.txt \
-    && /opt/weewx/bin/pip check
+    && /opt/weewx/bin/pip check \
+    && echo /data/lib/python > "$(python3 -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/zz-weewx-data.pth" \
+    && touch "$(/opt/weewx/bin/python3 -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/sitecustomize.py"
 
 # The default station is created here rather than on first start because
 # weectl looks up the user and group names, which a --user uid may not have.
 # It is created in /data so its paths are right, then moved aside for the
-# entrypoint to copy back into an empty volume.
+# entrypoint to copy into /data.
 RUN --mount=type=bind,source=station-defaults.py,target=/tmp/station-defaults.py \
     su -s /bin/sh weewx -c '/opt/weewx/bin/weectl station create /data --no-prompt' \
     && su -s /bin/sh weewx -c '/opt/weewx/bin/python3 /tmp/station-defaults.py /data/weewx.conf' \
     && mkdir /opt/weewx/station \
-    && find /data -mindepth 1 -maxdepth 1 -exec mv {} /opt/weewx/station/ \;
+    && find /data -mindepth 1 -maxdepth 1 -exec mv {} /opt/weewx/station/ \; \
+    && chown -R root:root /opt/weewx/station
 
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 # HOME is set explicitly so weectl finds ~/weewx-data under any --user uid.
 ENV PATH=/opt/weewx/bin:$PATH \
     HOME=/home/weewx \
-    PYTHONPATH=/data/lib/python \
+    PYTHONNOUSERSITE=1 \
+    PYTHONSAFEPATH=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
 USER weewx

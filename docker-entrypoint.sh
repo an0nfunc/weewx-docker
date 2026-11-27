@@ -12,7 +12,12 @@ if [ "${1:-}" = weewxd ]; then
             exit 1
         fi
         echo "No $config found, creating a new station that uses the Simulator driver."
-        cp -R /opt/weewx/station/. "$data/"
+        # Only fill in what is missing, so existing skins and extensions survive.
+        for entry in /opt/weewx/station/*; do
+            [ -e "$data/${entry##*/}" ] || cp -R "$entry" "$data/"
+        done
+        # Credentials go into this file.
+        chmod 600 "$config"
         echo "Edit $config for your station, then restart the container."
     elif ! grep -q '^\[Logging\]' "$config"; then
         echo "warning: $config has no [Logging] section, so weewxd logs to syslog," >&2
