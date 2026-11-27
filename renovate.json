@@ -34,7 +34,7 @@
       "addLabels": ["needs-review"]
     },
     {
-      "description": "Actions and build images run in the publish job, which CI on a pull request does not exercise, so they are never merged unseen.",
+      "description": "Some actions and build images run only in the publish job, which pull request CI does not exercise.",
       "matchManagers": ["github-actions", "custom.regex"],
       "commitMessagePrefix": "chore:",
       "minimumReleaseAge": "7 days",

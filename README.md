@@ -77,13 +77,13 @@ Run `weectl` and `pip` as the container user, never with `-u 0`.
 
 ## Hardware
 
-Pass the device into the container, and add a host group that owns only that
-device so the container user may open it.
+Pass the device into the container, and add the host group that owns it so the
+container user may open it.
 
-An RTL-SDR stick for rtl_433: USB device numbers change when the stick is
-replugged, so the whole USB tree is passed in. That makes the group the only
-thing between the container and every other USB device on the host, so give
-the stick a group of its own with a udev rule on the host (IDs from `lsusb`):
+An RTL-SDR stick for rtl_433. USB device numbers change when the stick is
+replugged, so the whole USB tree is passed in. The group is then the only thing
+between the container and every other USB device on the host. Give the stick a
+group of its own with a udev rule on the host (IDs from `lsusb`):
 
 ```
 # /etc/udev/rules.d/60-rtl-sdr.rules
